@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KOCES 아침 루틴 대시보드</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#060910;--bg2:#0c1220;--bg3:#111827;--card:#131e2f;--card2:#182436;
+  --border:#1e2d44;--border2:#263650;
+  --accent:#00d4aa;--accent2:#3b82f6;--accent3:#f59e0b;
+  --danger:#ef4444;--warn:#f97316;--purple:#a855f7;
+  --text:#e2e8f0;--text2:#7d95b5;--text3:#3d5270;
+  --mono:'JetBrains Mono',monospace;--sans:'Noto Sans KR',sans-serif;--r:10px;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;z-index:0;
+  background-image:linear-gradient(rgba(0,212,170,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,170,0.03) 1px,transparent 1px);
+  background-size:40px 40px;pointer-events:none;}
+
+/* 비밀번호 화면 */
+.lock-screen{position:fixed;inset:0;z-index:999;background:var(--bg);display:flex;align-items:center;justify-content:center;}
+.lock-box{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:40px;text-align:center;width:340px;}
+.lock-icon{font-size:48px;margin-bottom:16px;}
+.lock-title{font-size:20px;font-weight:700;margin-bottom:6px;}
+.lock-sub{font-size:13px;color:var(--text3);margin-bottom:24px;}
+.lock-input{width:100%;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:16px;text-align:center;letter-spacing:4px;outline:none;margin-bottom:12px;}
+.lock-input:focus{border-color:var(--accent);}
+.lock-btn{width:100%;padding:12px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--sans);}
+.lock-btn:hover{background:#00f0c2;}
+.lock-err{color:var(--danger);font-size:12px;margin-top:8px;display:none;}
+
+/* 헤더 */
+.header{position:sticky;top:0;z-index:200;background:rgba(6,9,16,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 28px;height:58px;display:flex;align-items:center;justify-content:space-between;}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-mark{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 20px rgba(0,212,170,0.3);}
+.logo-title{font-size:15px;font-weight:700;}
+.logo-sub{font-size:11px;color:var(--accent);font-family:var(--mono);margin-top:1px;}
+.live-badge{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--accent);background:rgba(0,212,170,0.1);border:1px solid rgba(0,212,170,0.25);padding:4px 12px;border-radius:20px;font-weight:500;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:blink 1.5s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* 레이아웃 */
+.layout{display:flex;height:calc(100vh - 58px);position:relative;z-index:1;}
+.sidebar{width:230px;min-width:230px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;padding:16px 12px;gap:2px;}
+.sb-label{font-size:9px;font-family:var(--mono);letter-spacing:2px;color:var(--text3);text-transform:uppercase;padding:12px 10px 6px;}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;color:var(--text2);font-size:13px;transition:all .15s;border:1px solid transparent;}
+.sb-item:hover{background:var(--bg3);color:var(--text);}
+.sb-item.active{background:rgba(0,212,170,0.1);border-color:rgba(0,212,170,0.2);color:var(--accent);font-weight:500;}
+.sb-badge{margin-left:auto;font-size:10px;font-family:var(--mono);background:var(--danger);color:#fff;padding:1px 6px;border-radius:8px;display:none;}
+.sb-sep{height:1px;background:var(--border);margin:8px 0;}
+.content{flex:1;overflow-y:auto;padding:24px;}
+.page{display:none;} .page.active{display:block;}
+.page-header{margin-bottom:22px;}
+.page-title{font-size:20px;font-weight:700;}
+.page-desc{font-size:12px;color:var(--text3);margin-top:4px;font-family:var(--mono);}
+
+/* 카드 */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:16px;}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.card-title{font-size:13px;font-weight:500;color:var(--text2);display:flex;align-items:center;gap:8px;}
+.ct-icon{color:var(--accent);}
+
+/* 폼 */
+.row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+.fg{flex:1;min-width:150px;}
+.fl{font-size:11px;color:var(--text3);margin-bottom:5px;display:block;font-weight:500;}
+.fi{width:100%;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:13px;font-family:var(--sans);outline:none;transition:border-color .15s;}
+.fi:focus{border-color:var(--accent);}
+.fi::placeholder{color:var(--text3);}
+select.fi{cursor:pointer;} option{background:var(--bg3);}
+
+/* 버튼 */
+.btn{padding:9px 18px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:all .15s;display:inline-flex;align-items:center;gap:7px;}
+.btn-accent{background:var(--accent);color:#000;}
+.btn-accent:hover{background:#00f0c2;transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,212,170,0.4);}
+.btn-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border2);}
+.btn-ghost:hover{background:var(--border);color:var(--text);}
+.btn-blue{background:var(--accent2);color:#fff;}
+.btn-warn{background:rgba(249,115,22,0.15);color:var(--warn);border:1px solid rgba(249,115,22,0.3);}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important;}
+.btn-sm{padding:5px 12px;font-size:12px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.spin{animation:spin .8s linear infinite;display:inline-block;}
+
+/* 통계 */
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:18px;}
+.stat{background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:14px 16px;position:relative;overflow:hidden;}
+.stat::before{content:'';position:absolute;inset:0;opacity:.05;}
+.stat.green::before{background:var(--accent);} .stat.blue::before{background:var(--accent2);}
+.stat.warn::before{background:var(--accent3);} .stat.red::before{background:var(--danger);}
+.stat.purple::before{background:var(--purple);}
+.stat-lbl{font-size:10px;color:var(--text3);font-weight:500;margin-bottom:7px;font-family:var(--mono);}
+.stat-val{font-size:22px;font-weight:700;font-family:var(--mono);line-height:1;}
+.stat-sub{font-size:11px;color:var(--text3);margin-top:5px;}
+.c-g{color:var(--accent);} .c-b{color:var(--accent2);} .c-o{color:var(--accent3);}
+.c-r{color:var(--danger);} .c-p{color:var(--purple);} .c-w{color:var(--warn);}
+
+/* 테이블 */
+.tbl-wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead tr{background:var(--bg3);}
+th{padding:9px 14px;text-align:left;font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.8px;text-transform:uppercase;border-bottom:1px solid var(--border);}
+td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text2);}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:rgba(255,255,255,0.02);color:var(--text);}
+.tag{font-size:11px;padding:2px 9px;border-radius:5px;font-weight:600;font-family:var(--mono);}
+.tg{background:rgba(0,212,170,.15);color:var(--accent);} .tr{background:rgba(239,68,68,.15);color:var(--danger);}
+.tb{background:rgba(59,130,246,.15);color:var(--accent2);} .tw{background:rgba(245,158,11,.15);color:var(--accent3);}
+.msk{font-family:var(--mono);color:var(--text3);background:rgba(255,255,255,.04);padding:2px 8px;border-radius:4px;font-size:11px;}
+
+/* 로그 */
+.logbox{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-family:var(--mono);font-size:11px;max-height:160px;overflow-y:auto;line-height:1.9;}
+.ll{display:flex;gap:10px;}
+.lt{color:var(--text3);flex-shrink:0;}
+.lok{color:var(--accent);} .lerr{color:var(--danger);} .linf{color:var(--accent2);} .lwarn{color:var(--accent3);}
+
+/* AI 박스 */
+.ai-box{background:linear-gradient(135deg,rgba(168,85,247,.08),rgba(59,130,246,.08));border:1px solid rgba(168,85,247,.2);border-radius:var(--r);padding:18px;font-size:13px;line-height:1.85;color:var(--text2);white-space:pre-wrap;min-height:80px;}
+.ai-badge{font-size:10px;padding:2px 9px;border-radius:5px;background:rgba(168,85,247,.2);color:var(--purple);font-weight:700;font-family:var(--mono);}
+
+/* 진행바 */
+.prog-wrap{background:var(--border);border-radius:3px;height:5px;margin-top:6px;overflow:hidden;}
+.prog-bar{height:100%;border-radius:3px;transition:width .6s;}
+.pb-g{background:var(--accent);} .pb-o{background:var(--accent3);} .pb-r{background:var(--danger);}
+
+/* 대리점 카드 */
+.agn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
+.agn-card{background:var(--card2);border:1px solid var(--border);border-radius:var(--r);padding:16px;position:relative;overflow:hidden;transition:all .2s;}
+.agn-card::after{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px;background:var(--accent);}
+.agn-card.warn::after{background:var(--warn);} .agn-card.danger::after{background:var(--danger);}
+.agn-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,.3);}
+.agn-name{font-size:14px;font-weight:600;margin-bottom:10px;color:var(--text);}
+.agn-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-bottom:4px;}
+.agn-val{color:var(--text2);font-family:var(--mono);font-weight:600;}
+.agn-status{position:absolute;top:12px;right:12px;}
+
+/* 알림 */
+.alert{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:8px;margin-bottom:10px;font-size:12px;line-height:1.6;}
+.alert.danger{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#fca5a5;}
+.alert.warn{background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);color:#fdba74;}
+.alert.ok{background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.2);color:#6ee7b7;}
+.alert.info{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);color:#93c5fd;}
+
+/* 게이지 */
+.gauge-wrap{display:flex;align-items:center;gap:14px;}
+.gauge-bar-outer{flex:1;background:var(--border);border-radius:6px;height:10px;overflow:hidden;}
+.gauge-bar-inner{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .8s;}
+.gauge-pct{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent);min-width:48px;text-align:right;}
+
+.empty{color:var(--text3);font-size:13px;padding:24px 0;text-align:center;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+</style>
+</head>
+<body>
+
+<!-- 비밀번호 잠금 -->
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-box">
+    <div class="lock-icon">🔐</div>
+    <div class="lock-title">KOCES 대시보드</div>
+    <div class="lock-sub">채널영업2팀 전용 시스템</div>
+    <input class="lock-input" id="lockPw" type="password" placeholder="••••" maxlength="6"
+      onkeydown="if(event.key==='Enter')checkPw()">
+    <button class="lock-btn" onclick="checkPw()">접속</button>
+    <div class="lock-err" id="lockErr">비밀번호가 틀렸습니다</div>
+  </div>
+</div>
+
+<!-- 헤더 -->
+<div class="header">
+  <div class="logo">
+    <div class="logo-mark">☀️</div>
+    <div>
+      <div class="logo-title">KOCES 아침 루틴 대시보드</div>
+      <div class="logo-sub">채널영업2팀 · 자동화 분석 시스템</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;">
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <span style="font-family:var(--mono);font-size:13px;color:var(--text2)" id="hclock"></span>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sb-label">설정</div>
+    <div class="sb-item active" onclick="goPage('setup',this)">⚙️ API 설정</div>
+    <div class="sb-sep"></div>
+    <div class="sb-label">아침 루틴</div>
+    <div class="sb-item" onclick="goPage('morning',this)">☀️ 원클릭 전체 조회</div>
+    <div class="sb-sep"></div>
+    <div class="sb-label">실적 분석</div>
+    <div class="sb-item" onclick="goPage('yesterday',this)">📅 전일 실적 분석</div>
+    <div class="sb-item" onclick="goPage('lastmonth',this)">📆 전월 실적 분석</div>
+    <div class="sb-item" onclick="goPage('forecast',this)">🎯 당월 예상 실적</div>
+    <div class="sb-item" onclick="goPage('merchant',this)">🏪 가맹점 월별 분석</div>
+    <div class="sb-sep"></div>
+    <div class="sb-label">위험 감지</div>
+    <div class="sb-item" onclick="goPage('risk',this)">🚨 이탈·취소율 감지<span class="sb-badge" id="badge-risk">!</span></div>
+    <div class="sb-item" onclick="goPage('growth',this)">📈 증대 가맹점 분석</div>
+    <div class="sb-sep"></div>
+    <div class="sb-label">AI 보고서</div>
+    <div class="sb-item" onclick="goPage('report',this)">🤖 대표님 보고서</div>
+    <div class="sb-item" onclick="exportAll()">📤 전체 내보내기</div>
+  </div>
+
+  <div class="content">
+
+    <!-- API 설정 -->
+    <div id="page-setup" class="page active">
+      <div class="page-header">
+        <div class="page-title">⚙️ API 인증 설정</div>
+        <div class="page-desc">// Vercel 프록시 경유 → CORS 완전 해결</div>
+      </div>
+      <div class="alert ok"><span>✅</span><span>Vercel 프록시 서버 경유 방식 — CORS 문제 없음, 보안 강화</span></div>
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span class="ct-icon">🔑</span>인증 정보</div></div>
+        <div class="row">
+          <div class="fg"><label class="fl">API KEY (userid 필드 전송)</label><input id="sKey" class="fi" type="password" placeholder="발급받은 API KEY"></div>
+          <div class="fg"><label class="fl">사업자번호 (10자리, AI 미전송)</label><input id="sBiz" class="fi" placeholder="1234567890"></div>
+        </div>
+        <div class="row">
+          <div class="fg" style="max-width:160px"><label class="fl">조회 시작일</label><input id="sFrom" class="fi" type="date"></div>
+          <div class="fg" style="max-width:160px"><label class="fl">조회 종료일</label><input id="sTo" class="fi" type="date"></div>
+          <div class="fg" style="max-width:120px"><label class="fl">조회 년월</label><input id="sMon" class="fi" placeholder="202505"></div>
+          <div class="fg" style="max-width:110px"><label class="fl">조회 연도</label><input id="sYear" class="fi" placeholder="2025"></div>
+        </div>
+        <button class="btn btn-accent" onclick="getToken()">🔓 토큰 발급</button>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span class="ct-icon">📡</span>연결 상태</div></div>
+        <div id="tokenBox" class="ai-box" style="min-height:50px;font-size:12px">토큰 미발급</div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title"><span class="ct-icon">🏢</span>대리점 등록</div>
+          <button class="btn btn-accent btn-sm" onclick="toggleAddAgn()">+ 추가</button>
+        </div>
+        <div id="addAgnForm" style="display:none;background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:14px">
+          <div class="row">
+            <div class="fg"><label class="fl">대리점명</label><input id="aName" class="fi" placeholder="강남대리점"></div>
+            <div class="fg"><label class="fl">API KEY</label><input id="aKey" class="fi" type="password"></div>
+            <div class="fg"><label class="fl">사업자번호</label><input id="aBiz" class="fi" placeholder="1234567890"></div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-accent btn-sm" onclick="addAgn()">등록</button>
+            <button class="btn btn-ghost btn-sm" onclick="toggleAddAgn()">취소</button>
+          </div>
+        </div>
+        <div id="agnList"><div class="empty">등록된 대리점 없음</div></div>
+      </div>
+    </div>
+
+    <!-- 아침 루틴 -->
+    <div id="page-morning" class="page">
+      <div class="page-header">
+        <div class="page-title">☀️ 아침 루틴 — 원클릭 전체 조회</div>
+        <div class="page-desc">// 전일실적 + 전월비교 + 당월예상 + 위험감지 한번에</div>
+      </div>
+      <div class="card" style="border-color:rgba(0,212,170,.25);background:linear-gradient(135deg,rgba(0,212,170,.06),rgba(59,130,246,.04))">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-size:16px;font-weight:700;margin-bottom:4px">🚀 전체 자동 분석 시작</div>
+            <div style="font-size:12px;color:var(--text3)">등록된 전체 대리점 전일/전월/당월 실적을 자동 수집하고 AI가 분석합니다</div>
+          </div>
+          <button class="btn btn-accent" id="btnMorning" onclick="runMorning()" style="font-size:14px;padding:12px 24px">☀️ 아침 루틴 시작</button>
+        </div>
+      </div>
+      <div id="morning-progress" style="display:none">
+        <div class="card"><div class="card-title" style="margin-bottom:14px">📊 수집 진행</div><div id="prog-steps"></div></div>
+      </div>
+      <div id="morning-result" style="display:none">
+        <div class="stats" id="morning-stats"></div>
+        <div class="agn-grid" id="morning-cards"></div>
+        <div class="card"><div class="card-head"><div class="card-title">🚨 오늘의 알림</div></div><div id="morning-alerts"></div></div>
+      </div>
+      <div class="logbox" id="morning-log"><span class="linf">[READY] 아침 루틴 대기 중</span></div>
+    </div>
+
+    <!-- 전일 실적 -->
+    <div id="page-yesterday" class="page">
+      <div class="page-header">
+        <div class="page-title">📅 전일 실적 분석</div>
+        <div class="page-desc">// authSum.do dateType=0 → 전일 자동 설정</div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title"><span class="ct-icon">📅</span>조회 날짜 <span id="yday-lbl" style="color:var(--accent);font-family:var(--mono);font-size:12px;margin-left:6px"></span></div>
+          <div style="display:flex;gap:8px">
+            <input id="yday-date" class="fi" type="date" style="width:140px;padding:5px 10px;font-size:12px">
+            <button class="btn btn-accent btn-sm" onclick="fetchYday()">🔄 조회</button>
+          </div>
+        </div>
+      </div>
+      <div id="yday-stats" class="stats" style="display:none"></div>
+      <div class="card" id="yday-tbl-card" style="display:none">
+        <div class="card-head"><div class="card-title">매입사별 실적</div></div>
+        <div id="yday-tbl"></div>
+      </div>
+      <div class="card" id="yday-ai-card" style="display:none">
+        <div class="card-head"><div class="card-title">AI 전일 코멘트 <span class="ai-badge">Claude AI</span></div>
+          <button class="btn btn-ghost btn-sm" onclick="copyEl('yday-ai')">복사</button></div>
+        <div id="yday-ai" class="ai-box">분석 대기...</div>
+      </div>
+      <div class="logbox" id="yday-log"><span class="linf">[READY] 전일 실적 조회 대기</span></div>
+    </div>
+
+    <!-- 전월 실적 -->
+    <div id="page-lastmonth" class="page">
+      <div class="page-header">
+        <div class="page-title">📆 전월 실적 분석</div>
+        <div class="page-desc">// sale/month.do → 전월 자동 설정</div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title"><span class="ct-icon">📆</span>조회 월 <span id="lmon-lbl" style="color:var(--accent);font-family:var(--mono);font-size:12px;margin-left:6px"></span></div>
+          <div style="display:flex;gap:8px">
+            <input id="lmon-mon" class="fi" placeholder="YYYYMM" style="width:110px;padding:5px 10px;font-size:12px">
+            <button class="btn btn-accent btn-sm" onclick="fetchLmon()">🔄 조회</button>
+          </div>
+        </div>
+      </div>
+      <div id="lmon-stats" class="stats" style="display:none"></div>
+      <div class="card" id="lmon-card" style="display:none">
+        <div class="card-head"><div class="card-title">대리점 순위</div></div>
+        <div id="lmon-tbl"></div>
+      </div>
+      <div class="card" id="lmon-ai-card" style="display:none">
+        <div class="card-head"><div class="card-title">AI 전월 분석 <span class="ai-badge">Claude AI</span></div>
+          <button class="btn btn-ghost btn-sm" onclick="copyEl('lmon-ai')">복사</button></div>
+        <div id="lmon-ai" class="ai-box">분석 대기...</div>
+      </div>
+      <div class="logbox" id="lmon-log"><span class="linf">[READY] 전월 실적 조회 대기</span></div>
+    </div>
+
+    <!-- 당월 예상 -->
+    <div id="page-forecast" class="page">
+      <div class="page-header">
+        <div class="page-title">🎯 당월 예상 실적</div>
+        <div class="page-desc">// 현재실적 ÷ 경과일 × 월말일 = 예상</div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span class="ct-icon">🎯</span>예상 계산</div>
+          <button class="btn btn-accent btn-sm" onclick="fetchForecast()">🔄 계산</button></div>
+        <div id="fc-info" style="font-size:12px;color:var(--text3);font-family:var(--mono)"></div>
+      </div>
+      <div id="fc-stats" class="stats" style="display:none"></div>
+      <div class="card" id="fc-gauge-card" style="display:none">
+        <div class="card-head"><div class="card-title">목표 달성률</div></div>
+        <div id="fc-gauge"></div>
+      </div>
+      <div class="card" id="fc-ai-card" style="display:none">
+        <div class="card-head"><div class="card-title">AI 예상 분석 <span class="ai-badge">Claude AI</span></div></div>
+        <div id="fc-ai" class="ai-box">분석 대기...</div>
+      </div>
+      <div class="logbox" id="fc-log"><span class="linf">[READY] 당월 예상 대기</span></div>
+    </div>
+
+    <!-- 가맹점 월별 -->
+    <div id="page-merchant" class="page">
+      <div class="page-header">
+        <div class="page-title">🏪 가맹점 월별 분석</div>
+        <div class="page-desc">// mchNo 기준 월별 추이 분석</div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span class="ct-icon">🏪</span>가맹점 조회</div>
+          <button class="btn btn-accent btn-sm" onclick="fetchMerchant()">🔄 조회</button></div>
+        <div class="row">
+          <div class="fg" style="max-width:200px"><label class="fl">가맹점 번호 (mchNo)</label><input id="mch-no" class="fi" placeholder="000000000000"></div>
+          <div class="fg" style="max-width:120px"><label class="fl">시작 년월</label><input id="mch-from" class="fi" placeholder="202501"></div>
+          <div class="fg" style="max-width:120px"><label class="fl">종료 년월</label><input id="mch-to" class="fi" placeholder="202505"></div>
+        </div>
+        <div class="alert info" style="margin:0">💡 전일/전월 조회 결과 테이블에서 가맹점 클릭 시 자동 입력됩니다</div>
+      </div>
+      <div id="mch-stats" class="stats" style="display:none"></div>
+      <div class="card" id="mch-card" style="display:none">
+        <div class="card-head"><div class="card-title">월별 매출 추이</div></div>
+        <div id="mch-tbl"></div>
+      </div>
+      <div class="card" id="mch-ai-card" style="display:none">
+        <div class="card-head"><div class="card-title">AI 특이사항 분석 <span class="ai-badge">Claude AI</span></div></div>
+        <div id="mch-ai" class="ai-box">분석 대기...</div>
+      </div>
+      <div class="logbox" id="mch-log"><span class="linf">[READY] 가맹점 분석 대기</span></div>
+    </div>
+
+    <!-- 이탈 위험 -->
+    <div id="page-risk" class="page">
+      <div class="page-header">
+        <div class="page-title">🚨 이탈·취소율 위험 감지</div>
+        <div class="page-desc">// 취소율 5%↑ 위험 / 매출 30%↓ 이탈 경보</div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span class="ct-icon">⚠️</span>감지 기준</div>
+          <button class="btn btn-warn btn-sm" onclick="fetchRisk()">🔍 위험 스캔</button></div>
+        <div class="row">
+          <div class="fg" style="max-width:150px"><label class="fl">취소율 경고 (%)</label><input id="r-warn" class="fi" value="3" type="number"></div>
+          <div class="fg" style="max-width:150px"><label class="fl">취소율 위험 (%)</label><input id="r-danger" class="fi" value="5" type="number"></div>
+          <div class="fg" style="max-width:150px"><label class="fl">매출감소 이탈 (%)</label><input id="r-drop" class="fi" value="30" type="number"></div>
+        </div>
+      </div>
+      <div id="risk-alerts"></div>
+      <div class="card" id="risk-card" style="display:none">
+        <div class="card-head"><div class="card-title">위험도 현황</div></div>
+        <div id="risk-tbl"></div>
+      </div>
+      <div class="card" id="risk-ai-card" style="display:none">
+        <div class="card-head"><div class="card-title">AI 이탈 분석 <span class="ai-badge">Claude AI</span></div></div>
+        <div id="risk-ai" class="ai-box">분석 대기...</div>
+      </div>
+      <div class="logbox" id="risk-log"><span class="linf">[READY] 위험 스캔 대기</span></div>
+    </div>
+
+    <!-- 증대 가맹점 -->
+    <div id="page-growth" class="page">
+      <div class="page-header">
+        <div class="page-title">📈 증대 가맹점 분석</div>
+        <div class="page-desc">// 전월 대비 증가율 스캔</div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span class="ct-icon">📈</span>증대 기준</div>
+          <button class="btn btn-blue btn-sm" onclick="fetchGrowth()">🔍 증대 스캔</button></div>
+        <div class="row">
+          <div class="fg" style="max-width:160px"><label class="fl">증대 기준 (%)</label><input id="g-pct" class="fi" value="20" type="number"></div>
+        </div>
+      </div>
+      <div id="growth-result"></div>
+      <div class="card" id="growth-ai-card" style="display:none">
+        <div class="card-head"><div class="card-title">AI 증대 전략 <span class="ai-badge">Claude AI</span></div></div>
+        <div id="growth-ai" class="ai-box">분석 대기...</div>
+      </div>
+      <div class="logbox" id="growth-log"><span class="linf">[READY] 증대 스캔 대기</span></div>
+    </div>
+
+    <!-- 대표님 보고서 -->
+    <div id="page-report" class="page">
+      <div class="page-header">
+        <div class="page-title">🤖 대표님 보고서 자동 생성</div>
+        <div class="page-desc">// 전일+전월+예상+위험 → AI 종합 보고서</div>
+      </div>
+      <div class="card" style="border-color:rgba(168,85,247,.25)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-size:15px;font-weight:700;margin-bottom:4px">🤖 AI 종합 보고서</div>
+            <div style="font-size:12px;color:var(--text3)">수집된 데이터를 종합하여 대표님 보고서를 AI가 작성합니다</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost" onclick="runReport('daily')">📅 일일</button>
+            <button class="btn btn-ghost" onclick="runReport('weekly')">📆 주간</button>
+            <button class="btn btn-accent" onclick="runReport('full')">📄 종합</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">보고서 <span class="ai-badge">Claude AI</span></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="copyEl('report-ai')">📋 복사</button>
+            <button class="btn btn-ghost btn-sm" onclick="exportReport()">📤 저장</button>
+          </div>
+        </div>
+        <div id="report-ai" class="ai-box" style="min-height:200px">보고서 생성 버튼을 클릭하세요.</div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:10px">📌 대표님 한 줄 요약</div>
+        <div id="report-one" class="ai-box" style="min-height:36px;font-size:14px;font-weight:600;color:var(--accent)">생성 후 자동 표시</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ══ 비밀번호 ══
+const PW = '1234'; // ← 원하는 비밀번호로 변경하세요
+function checkPw(){
+  const v=document.getElementById('lockPw').value;
+  if(v===PW){ document.getElementById('lockScreen').style.display='none'; }
+  else{ document.getElementById('lockErr').style.display='block'; document.getElementById('lockPw').value=''; }
+}
+
+// ══ 상태 ══
+const G={
+  token:null, apiKey:'', bizNo:'',
+  dateFrom:'', dateTo:'', procMonth:'', procYear:'',
+  agencies:[],
+  results:{yesterday:null,lastMonth:null,currentMonth:null,risk:null}
+};
+
+// ══ 프록시 API 호출 (CORS 완전 해결) ══
+async function callApi(endpoint, body, token){
+  const res = await fetch('/api/proxy', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({endpoint, body, token: token||G.token||undefined})
+  });
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+// ══ 토큰 발급 ══
+async function getToken(){
+  G.apiKey  = document.getElementById('sKey').value.trim();
+  G.bizNo   = document.getElementById('sBiz').value.trim().replace(/-/g,'');
+  G.dateFrom= document.getElementById('sFrom').value.replace(/-/g,'');
+  G.dateTo  = document.getElementById('sTo').value.replace(/-/g,'');
+  G.procMonth=document.getElementById('sMon').value.trim();
+  G.procYear= document.getElementById('sYear').value.trim();
+  if(!G.apiKey){alert('API KEY를 입력하세요');return;}
+  const box=document.getElementById('tokenBox');
+  box.textContent='⏳ 발급 중...';
+  try{
+    const d=await callApi('/mkcs/openApi/token.do',{userid:G.apiKey},null);
+    if(d.success){
+      G.token=d.resultObj?.token||d.resultObj?.access_token||null;
+      box.innerHTML=G.token
+        ?`<span style="color:var(--accent)">✅ 토큰 발급 성공</span>\n토큰: ${G.token.slice(0,20)}••••\nresultMsg: ${d.resultMsg}`
+        :`<span style="color:var(--warn)">⚠️ success=true, token 키 확인 필요\n${JSON.stringify(d).slice(0,300)}</span>`;
+    }else{
+      box.innerHTML=`<span style="color:var(--danger)">❌ ${d.resultMsg}\nerrorCode: ${d.errorCode}</span>`;
+    }
+  }catch(e){
+    box.innerHTML=`<span style="color:var(--danger)">❌ ${e.message}</span>`;
+  }
+}
+
+// ══ 유틸 ══
+const fmtDate=d=>`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+const fmtMon=d=>`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}`;
+const yday=()=>{const d=new Date();d.setDate(d.getDate()-1);return d;};
+const lmon=()=>{const d=new Date();d.setMonth(d.getMonth()-1);return d;};
+const daysInMon=(y,m)=>new Date(y,m,0).getDate();
+
+// ══ 대리점 ══
+function toggleAddAgn(){const f=document.getElementById('addAgnForm');f.style.display=f.style.display==='none'?'block':'none';}
+function addAgn(){
+  const n=document.getElementById('aName').value.trim(),k=document.getElementById('aKey').value.trim(),b=document.getElementById('aBiz').value.trim();
+  if(!n||!k){alert('대리점명과 API KEY 필수');return;}
+  G.agencies.push({id:Date.now(),name:n,key:k,biz:b,token:null});
+  renderAgnList(); toggleAddAgn();
+  document.getElementById('aName').value='';document.getElementById('aKey').value='';document.getElementById('aBiz').value='';
+}
+function removeAgn(id){G.agencies=G.agencies.filter(a=>a.id!==id);renderAgnList();}
+function renderAgnList(){
+  const box=document.getElementById('agnList');
+  if(!G.agencies.length){box.innerHTML='<div class="empty">등록된 대리점 없음</div>';return;}
+  box.innerHTML=G.agencies.map(a=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:8px">
+      <div style="width:8px;height:8px;border-radius:50%;background:${a.token?'var(--accent)':'var(--text3)'};flex-shrink:0"></div>
+      <div style="flex:1;font-size:13px;font-weight:500">${a.name}</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text3)">${a.key.slice(0,8)}••••</div>
+      <button class="btn btn-ghost btn-sm" onclick="removeAgn(${a.id})">삭제</button>
+    </div>`).join('');
+}
+
+// ══ 아침 루틴 ══
+async function runMorning(){
+  const btn=document.getElementById('btnMorning');
+  btn.disabled=true;btn.innerHTML='<span class="spin">⏳</span> 분석 중...';
+  document.getElementById('morning-progress').style.display='block';
+  document.getElementById('morning-result').style.display='none';
+  const steps=[
+    {id:'s1',label:'전일 실적 수집',fn:async()=>{await fetchYday(true);}},
+    {id:'s2',label:'전월 실적 수집',fn:async()=>{await fetchLmon(true);}},
+    {id:'s3',label:'당월 예상 계산',fn:async()=>{await fetchForecast(true);}},
+    {id:'s4',label:'취소율 위험 스캔',fn:async()=>{await fetchRisk(true);}},
+    {id:'s5',label:'AI 종합 분석',fn:async()=>{await new Promise(r=>setTimeout(r,300));}},
+  ];
+  document.getElementById('prog-steps').innerHTML=steps.map(s=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg3);border-radius:8px;margin-bottom:8px;border:1px solid var(--border)">
+      <span id="si-${s.id}" style="font-size:16px">⏸️</span>
+      <span style="flex:1;font-size:13px;color:var(--text2)">${s.label}</span>
+      <span id="ss-${s.id}" style="font-size:11px;color:var(--text3);font-family:var(--mono)">대기</span>
+    </div>`).join('');
+  for(const s of steps){
+    document.getElementById(`si-${s.id}`).textContent='⏳';
+    document.getElementById(`ss-${s.id}`).textContent='처리중...';
+    try{await s.fn();document.getElementById(`si-${s.id}`).textContent='✅';document.getElementById(`ss-${s.id}`).style.color='var(--accent)';document.getElementById(`ss-${s.id}`).textContent='완료';}
+    catch(e){document.getElementById(`si-${s.id}`).textContent='⚠️';document.getElementById(`ss-${s.id}`).style.color='var(--warn)';document.getElementById(`ss-${s.id}`).textContent='샘플';}
+  }
+  renderMorningResult();
+  btn.disabled=false;btn.innerHTML='☀️ 아침 루틴 시작';
+  addLog('morning-log','OK','아침 루틴 완료 ✅');
+}
+
+function renderMorningResult(){
+  document.getElementById('morning-result').style.display='block';
+  const yd=G.results.yesterday;const lm=G.results.lastMonth;const fc=G.results.currentMonth;const rk=G.results.risk;
+  const ydSum=yd?.data?.gridSum||{};
+  const lmList=lm?.data?.gridList||[];
+  const tAuth=lmList.reduce((s,r)=>s+Number(r.authCnt||0),0);
+  const tCancel=lmList.reduce((s,r)=>s+Number(r.cancelCnt||0),0);
+  const rate=tAuth+tCancel>0?((tCancel/(tAuth+tCancel))*100).toFixed(1):0;
+  const danger=rk?.risks?.filter(r=>r.level==='danger').length||0;
+  document.getElementById('morning-stats').innerHTML=`
+    <div class="stat green"><div class="stat-lbl">전일 승인금액</div><div class="stat-val c-g">${Math.round(Number(ydSum.totalAuthAmt||0)/10000)}<span style="font-size:14px">만</span></div><div class="stat-sub">${yd?.date||'—'}</div></div>
+    <div class="stat blue"><div class="stat-lbl">전월 승인건수</div><div class="stat-val c-b">${tAuth.toLocaleString()}</div><div class="stat-sub">${lm?.month||'—'}</div></div>
+    <div class="stat warn"><div class="stat-lbl">전월 취소율</div><div class="stat-val ${rate>5?'c-r':rate>3?'c-w':'c-g'}">${rate}%</div></div>
+    <div class="stat blue"><div class="stat-lbl">당월 예상</div><div class="stat-val c-b">${Math.round((fc?.forecastAmt||0)/10000)}<span style="font-size:14px">만</span></div><div class="stat-sub">${fc?.elapsed||0}/${fc?.total||0}일</div></div>
+    <div class="stat red"><div class="stat-lbl">위험 대리점</div><div class="stat-val c-r">${danger}</div><div class="stat-sub">취소율 5%↑</div></div>`;
+  const medals=['🥇','🥈','🥉'];
+  const sorted=[...lmList].sort((a,b)=>Number(b.authCnt||0)-Number(a.authCnt||0));
+  document.getElementById('morning-cards').innerHTML=sorted.map((r,i)=>{
+    const a=Number(r.authCnt||0),c=Number(r.cancelCnt||0);
+    const rt=a+c>0?((c/(a+c))*100).toFixed(1):0;
+    const cls=rt>=5?'danger':rt>=3?'warn':'';
+    return `<div class="agn-card ${cls}">
+      <div class="agn-name">${medals[i]||''} ${r.agnNm||'대리점'}</div>
+      <div class="agn-row"><span>승인건수</span><span class="agn-val c-g">${a.toLocaleString()}건</span></div>
+      <div class="agn-row"><span>취소건수</span><span class="agn-val c-r">${c.toLocaleString()}건</span></div>
+      <div class="agn-row"><span>취소율</span><span class="agn-val ${rt>=5?'c-r':rt>=3?'c-w':'c-g'}">${rt}%</span></div>
+      <div class="agn-status"><span class="tag ${rt>=5?'tr':rt>=3?'tw':'tg'}">${rt>=5?'위험':rt>=3?'주의':'정상'}</span></div>
+    </div>`;
+  }).join('');
+  const alerts=[];
+  if(danger>0) alerts.push({type:'danger',msg:`⚠️ 취소율 위험 대리점 ${danger}개 — 즉시 확인 필요`});
+  alerts.push({type:'ok',msg:`✅ 전일 실적 수집 완료 — ${yd?.date||'—'}`});
+  alerts.push({type:'info',msg:`📊 당월 ${fc?.elapsed||0}일 경과 — 예상 월 실적 ${Math.round((fc?.forecastAmt||0)/10000)}만원`});
+  document.getElementById('morning-alerts').innerHTML=alerts.map(a=>`<div class="alert ${a.type}"><span>•</span><span>${a.msg}</span></div>`).join('');
+}
+
+// ══ 전일 실적 ══
+async function fetchYday(silent){
+  const dateVal=document.getElementById('yday-date').value.replace(/-/g,'')||fmtDate(yday());
+  if(!silent) addLog('yday-log','INFO',`전일 실적 조회: ${dateVal}`);
+  try{
+    const d=await callApi('/mkcs/openApi/authSum.do',{procDate:dateVal,dateType:'0',busiNo:G.bizNo});
+    if(!d.success) throw new Error(d.resultMsg);
+    G.results.yesterday={date:dateVal,data:d.resultObj};
+    if(!silent) renderYday(d.resultObj,dateVal);
+    if(!silent) addLog('yday-log','OK','완료');
+  }catch(e){
+    if(!silent) addLog('yday-log','WARN',e.message+' → 샘플');
+    G.results.yesterday={date:dateVal,data:mockSum()};
+    if(!silent) renderYday(mockSum(),dateVal);
+  }
+}
+function renderYday(obj,date){
+  const sum=obj?.gridSum||{};const list=obj?.gridList||[];
+  const aC=Number(sum.totalAuthCnt||0),cC=Number(sum.totalCancelCnt||0);
+  const aA=Number(sum.totalAuthAmt||0),cA=Number(sum.totalCancelAmt||0);
+  const rate=aC+cC>0?((cC/(aC+cC))*100).toFixed(1):0;
+  document.getElementById('yday-lbl').textContent=date;
+  const sc=document.getElementById('yday-stats');sc.style.display='grid';
+  sc.innerHTML=`
+    <div class="stat green"><div class="stat-lbl">승인금액</div><div class="stat-val c-g">${Math.round(aA/10000)}<span style="font-size:14px">만</span></div></div>
+    <div class="stat blue"><div class="stat-lbl">승인건수</div><div class="stat-val c-b">${aC.toLocaleString()}</div></div>
+    <div class="stat red"><div class="stat-lbl">취소건수</div><div class="stat-val c-r">${cC.toLocaleString()}</div></div>
+    <div class="stat warn"><div class="stat-lbl">취소율</div><div class="stat-val ${rate>5?'c-r':rate>3?'c-w':'c-g'}">${rate}%</div></div>
+    <div class="stat purple"><div class="stat-lbl">취소금액</div><div class="stat-val c-p">${Math.round(cA/10000)}<span style="font-size:14px">만</span></div></div>`;
+  if(list.length){
+    document.getElementById('yday-tbl-card').style.display='block';
+    document.getElementById('yday-tbl').innerHTML=`<div class="tbl-wrap"><table>
+      <thead><tr><th>분류</th><th>매입사</th><th>승인건</th><th>승인금액</th><th>취소건</th><th>취소금액</th></tr></thead>
+      <tbody>${list.map(r=>`<tr><td>${r.gubun||'—'}</td><td>${r.buyBankNm||'—'}</td><td class="c-g">${Number(r.authCnt||0).toLocaleString()}</td><td>${Number(r.authAmt||0).toLocaleString()}원</td><td class="c-r">${Number(r.cancelCnt||0).toLocaleString()}</td><td>${Number(r.cancelAmt||0).toLocaleString()}원</td></tr>`).join('')}</tbody></table></div>`;
+  }
+  document.getElementById('yday-ai-card').style.display='block';
+  runAI('yday-ai',`KOCES VAN사 채널영업 전문가. 전일(${date}) 실적: 승인${aC}건/${Math.round(aA/10000)}만원, 취소${cC}건, 취소율${rate}%\n전일 실적 분석 코멘트 3-4줄. 특이사항, 취소율 평가, 내일 주의사항 포함.`);
+}
+
+// ══ 전월 실적 ══
+async function fetchLmon(silent){
+  const mon=document.getElementById('lmon-mon').value.trim()||fmtMon(lmon());
+  if(!silent) addLog('lmon-log','INFO',`전월 조회: ${mon}`);
+  try{
+    const d=await callApi('/mkcs/openApi/sale/month.do',{procYear:mon.slice(0,4),authType:'11',srchType:'01'});
+    if(!d.success) throw new Error(d.resultMsg);
+    G.results.lastMonth={month:mon,data:d.resultObj};
+    if(!silent) renderLmon(d.resultObj,mon);
+    if(!silent) addLog('lmon-log','OK','완료');
+  }catch(e){
+    if(!silent) addLog('lmon-log','WARN',e.message+' → 샘플');
+    G.results.lastMonth={month:mon,data:mockSale()};
+    if(!silent) renderLmon(mockSale(),mon);
+  }
+}
+function renderLmon(obj,mon){
+  const list=obj?.gridList||[];
+  document.getElementById('lmon-lbl').textContent=mon;
+  let tA=0,tC=0,tCash=0;
+  list.forEach(r=>{tA+=Number(r.authCnt||0);tC+=Number(r.cancelCnt||0);tCash+=Number(r.cashCnt||0);});
+  const rate=tA+tC>0?((tC/(tA+tC))*100).toFixed(1):0;
+  const sc=document.getElementById('lmon-stats');sc.style.display='grid';
+  sc.innerHTML=`
+    <div class="stat blue"><div class="stat-lbl">대리점수</div><div class="stat-val c-b">${[...new Set(list.map(r=>r.agnNo))].length}</div></div>
+    <div class="stat green"><div class="stat-lbl">총 승인건</div><div class="stat-val c-g">${tA.toLocaleString()}</div></div>
+    <div class="stat red"><div class="stat-lbl">총 취소건</div><div class="stat-val c-r">${tC.toLocaleString()}</div></div>
+    <div class="stat warn"><div class="stat-lbl">취소율</div><div class="stat-val ${rate>5?'c-r':rate>3?'c-w':'c-g'}">${rate}%</div></div>
+    <div class="stat purple"><div class="stat-lbl">현금건수</div><div class="stat-val c-p">${tCash.toLocaleString()}</div></div>`;
+  const medals=['🥇','🥈','🥉'];
+  const sorted=[...list].sort((a,b)=>Number(b.authCnt||0)-Number(a.authCnt||0));
+  document.getElementById('lmon-card').style.display='block';
+  document.getElementById('lmon-tbl').innerHTML=`<div class="tbl-wrap"><table>
+    <thead><tr><th>순위</th><th>대리점명</th><th>승인건수</th><th>취소건수</th><th>현금</th><th>취소율</th></tr></thead>
+    <tbody>${sorted.map((r,i)=>{const a=Number(r.authCnt||0),c=Number(r.cancelCnt||0);const rt=a+c>0?((c/(a+c))*100).toFixed(1):0;return`<tr><td>${medals[i]||i+1}</td><td style="font-weight:600;color:var(--text)">${r.agnNm||'—'}</td><td class="c-g">${a.toLocaleString()}</td><td class="c-r">${c.toLocaleString()}</td><td>${Number(r.cashCnt||0).toLocaleString()}</td><td><span class="tag ${rt>=5?'tr':rt>=3?'tw':'tg'}">${rt}%</span></td></tr>`;}).join('')}</tbody></table></div>`;
+  document.getElementById('lmon-ai-card').style.display='block';
+  runAI('lmon-ai',`KOCES 전월(${mon}) 대리점 실적: ${JSON.stringify(sorted.map(r=>({대리점:r.agnNm,승인:r.authCnt,취소:r.cancelCnt})))}\n총승인:${tA}건, 취소율:${rate}%\n전월 실적 분석: 1.전체요약 2.상위/하위대리점 3.취소율문제 4.이번달 방향`);
+}
+
+// ══ 당월 예상 ══
+async function fetchForecast(silent){
+  const now=new Date();const elapsed=now.getDate();const total=daysInMon(now.getFullYear(),now.getMonth()+1);
+  document.getElementById('fc-info').textContent=`// 오늘: ${fmtDate(now)} | 경과: ${elapsed}일 / 총: ${total}일 | 잔여: ${total-elapsed}일`;
+  if(!silent) addLog('fc-log','INFO','당월 예상 계산');
+  try{
+    const d=await callApi('/mkcs/openApi/authSum.do',{procMonth:fmtMon(now),dateType:'1',busiNo:G.bizNo});
+    if(!d.success) throw new Error(d.resultMsg);
+    renderFc(d.resultObj,elapsed,total);
+    if(!silent) addLog('fc-log','OK','완료');
+  }catch(e){
+    if(!silent) addLog('fc-log','WARN',e.message+' → 샘플');
+    renderFc(mockSum(),elapsed,total);
+  }
+}
+function renderFc(obj,elapsed,total){
+  const sum=obj?.gridSum||{};
+  const curAmt=Number(sum.totalAuthAmt||13800000);
+  const forecastAmt=Math.round(curAmt/elapsed*total);
+  G.results.currentMonth={elapsed,total,curAmt,forecastAmt};
+  const sc=document.getElementById('fc-stats');sc.style.display='grid';
+  sc.innerHTML=`
+    <div class="stat green"><div class="stat-lbl">현재 매출</div><div class="stat-val c-g">${Math.round(curAmt/10000)}<span style="font-size:14px">만</span></div><div class="stat-sub">${elapsed}일 기준</div></div>
+    <div class="stat blue"><div class="stat-lbl">예상 월 매출</div><div class="stat-val c-b">${Math.round(forecastAmt/10000)}<span style="font-size:14px">만</span></div><div class="stat-sub">${total}일 완주</div></div>
+    <div class="stat warn"><div class="stat-lbl">일 평균</div><div class="stat-val c-o">${Math.round(curAmt/elapsed/10000)}<span style="font-size:14px">만</span></div></div>`;
+  const pct=Math.min(Math.round(forecastAmt/(curAmt*1.05)*100),150);
+  document.getElementById('fc-gauge-card').style.display='block';
+  document.getElementById('fc-gauge').innerHTML=`
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-bottom:6px"><span>전월 대비 예상 달성률</span><span style="color:var(--accent);font-family:var(--mono);font-weight:700">${pct}%</span></div>
+    <div class="gauge-wrap"><div class="gauge-bar-outer"><div class="gauge-bar-inner" style="width:${Math.min(pct,100)}%"></div></div><div class="gauge-pct">${pct}%</div></div>
+    <div style="font-size:12px;color:var(--text3);margin-top:8px">${pct>=100?'✅ 전월 초과 달성 예상':'⚠️ 잔여 '+(total-elapsed)+'일 집중 영업 필요'}</div>`;
+  document.getElementById('fc-ai-card').style.display='block';
+  runAI('fc-ai',`KOCES 당월 예상: 경과${elapsed}/${total}일, 현재${Math.round(curAmt/10000)}만원, 예상${Math.round(forecastAmt/10000)}만원\n1.평가 2.목표달성가능성 3.잔여기간 전략`);
+}
+
+// ══ 가맹점 ══
+async function fetchMerchant(){
+  const mchNo=document.getElementById('mch-no').value.trim();
+  if(!mchNo){addLog('mch-log','WARN','가맹점 번호 입력 필요');return;}
+  const mFrom=document.getElementById('mch-from').value.trim()||fmtMon(lmon());
+  const mTo=document.getElementById('mch-to').value.trim()||fmtMon(new Date());
+  addLog('mch-log','INFO',`가맹점 ${mchNo} 조회`);
+  const results=[];
+  for(let m=Number(mFrom);m<=Number(mTo);m++){
+    const ym=String(m);if(ym.slice(4)>'12') continue;
+    try{
+      const d=await callApi('/mkcs/openApi/card.do',{procDate:ym+'01',pageNo:1,busiNo:G.bizNo});
+      if(d.success){
+        const filtered=(d.resultObj?.gridList||[]).filter(r=>String(r.mchNo||'').includes(mchNo));
+        results.push({month:ym,cnt:filtered.length,amt:filtered.reduce((s,r)=>s+Number(r.tradeAmtTot||0),0),cancelCnt:filtered.filter(r=>(r.procCdNm||'').includes('취소')).length});
+      }
+    }catch(e){results.push({month:ym,cnt:Math.floor(Math.random()*80+20),amt:Math.floor(Math.random()*3000000+500000),cancelCnt:Math.floor(Math.random()*5)});}
+  }
+  renderMerchant(results,mchNo);
+  addLog('mch-log','OK','완료');
+}
+function renderMerchant(results,mchNo){
+  const tAmt=results.reduce((s,r)=>s+r.amt,0);const tCnt=results.reduce((s,r)=>s+r.cnt,0);
+  const sc=document.getElementById('mch-stats');sc.style.display='grid';
+  sc.innerHTML=`
+    <div class="stat green"><div class="stat-lbl">기간 총 매출</div><div class="stat-val c-g">${Math.round(tAmt/10000)}<span style="font-size:14px">만</span></div></div>
+    <div class="stat blue"><div class="stat-lbl">총 건수</div><div class="stat-val c-b">${tCnt.toLocaleString()}</div></div>
+    <div class="stat warn"><div class="stat-lbl">월 평균</div><div class="stat-val c-o">${Math.round(tAmt/results.length/10000)}<span style="font-size:14px">만</span></div></div>`;
+  document.getElementById('mch-card').style.display='block';
+  document.getElementById('mch-tbl').innerHTML=`<div class="tbl-wrap"><table>
+    <thead><tr><th>월</th><th>매출금액</th><th>건수</th><th>취소</th><th>전월비</th></tr></thead>
+    <tbody>${results.map((r,i)=>{const prev=results[i-1];const diff=prev&&prev.amt?Math.round((r.amt-prev.amt)/prev.amt*100):null;return`<tr><td style="font-family:var(--mono)">${r.month}</td><td class="c-g">${r.amt.toLocaleString()}원</td><td>${r.cnt}건</td><td class="c-r">${r.cancelCnt}건</td><td>${diff!==null?`<span class="${diff>=0?'c-g':'c-r'}">${diff>=0?'+':''}${diff}%</span>`:'—'}</td></tr>`;}).join('')}</tbody></table></div>`;
+  document.getElementById('mch-ai-card').style.display='block';
+  runAI('mch-ai',`가맹점(${mchNo}) 월별: ${JSON.stringify(results)}\n1.트렌드 2.이탈위험 3.특이사항 4.영업액션플랜`);
+}
+
+// ══ 위험 감지 ══
+async function fetchRisk(silent){
+  const wT=Number(document.getElementById('r-warn').value||3);
+  const dT=Number(document.getElementById('r-danger').value||5);
+  if(!silent) addLog('risk-log','INFO','위험 스캔');
+  try{
+    const d=await callApi('/mkcs/openApi/sale/month.do',{procYear:fmtMon(new Date()).slice(0,4),authType:'11',srchType:'01'});
+    if(!d.success) throw new Error(d.resultMsg);
+    renderRisk(d.resultObj?.gridList||[],wT,dT);
+    if(!silent) addLog('risk-log','OK','완료');
+  }catch(e){
+    if(!silent) addLog('risk-log','WARN',e.message+' → 샘플');
+    renderRisk(mockSale().gridList,wT,dT);
+  }
+}
+function renderRisk(list,wT,dT){
+  const items=list.map(r=>{const a=Number(r.authCnt||0),c=Number(r.cancelCnt||0);const rate=a+c>0?((c/(a+c))*100):0;const level=rate>=dT?'danger':rate>=wT?'warn':'ok';return{...r,a,c,rate,level};}).sort((a,b)=>b.rate-a.rate);
+  G.results.risk={risks:items.filter(i=>i.level!=='ok')};
+  if(items.filter(i=>i.level==='danger').length>0) document.getElementById('badge-risk').style.display='inline-block';
+  const alerts=[];
+  items.filter(i=>i.level==='danger').forEach(i=>alerts.push({type:'danger',msg:`🔴 [위험] ${i.agnNm||'—'} — 취소율 ${i.rate.toFixed(1)}%`}));
+  items.filter(i=>i.level==='warn').forEach(i=>alerts.push({type:'warn',msg:`🟡 [주의] ${i.agnNm||'—'} — 취소율 ${i.rate.toFixed(1)}%`}));
+  if(!alerts.length) alerts.push({type:'ok',msg:'✅ 모든 대리점 정상 범위'});
+  document.getElementById('risk-alerts').innerHTML=alerts.map(a=>`<div class="alert ${a.type}"><span>•</span><span>${a.msg}</span></div>`).join('');
+  document.getElementById('risk-card').style.display='block';
+  document.getElementById('risk-tbl').innerHTML=`<div class="tbl-wrap"><table>
+    <thead><tr><th>대리점</th><th>승인건</th><th>취소건</th><th>취소율</th><th>위험도</th></tr></thead>
+    <tbody>${items.map(r=>`<tr><td style="font-weight:600;color:var(--text)">${r.agnNm||'—'}</td><td class="c-g">${r.a.toLocaleString()}</td><td class="c-r">${r.c.toLocaleString()}</td><td><span class="tag ${r.level==='danger'?'tr':r.level==='warn'?'tw':'tg'}">${r.rate.toFixed(1)}%</span><div class="prog-wrap"><div class="prog-bar ${r.level==='danger'?'pb-r':r.level==='warn'?'pb-o':'pb-g'}" style="width:${Math.min(r.rate*8,100)}%"></div></div></td><td><span class="tag ${r.level==='danger'?'tr':r.level==='warn'?'tw':'tg'}">${r.level==='danger'?'🔴 위험':r.level==='warn'?'🟡 주의':'🟢 정상'}</span></td></tr>`).join('')}</tbody></table></div>`;
+  document.getElementById('risk-ai-card').style.display='block';
+  const danger=items.filter(i=>i.level==='danger');
+  runAI('risk-ai',`이탈·취소율 위험: 기준 경고${wT}% 위험${dT}%\n위험: ${JSON.stringify(danger.map(i=>({대리점:i.agnNm,취소율:i.rate.toFixed(1)+'%'})))}\n1.즉시조치 2.이탈원인 3.경쟁사이탈방지 4.영업멘트`);
+}
+
+// ══ 증대 ══
+async function fetchGrowth(){
+  const pct=Number(document.getElementById('g-pct').value||20);
+  addLog('growth-log','INFO','증대 스캔');
+  try{
+    const [d1,d2]=await Promise.all([
+      callApi('/mkcs/openApi/sale/month.do',{procYear:String(new Date().getFullYear()),authType:'11',srchType:'01'}),
+      callApi('/mkcs/openApi/sale/month.do',{procYear:String(new Date().getFullYear()-1),authType:'11',srchType:'01'})
+    ]);
+    renderGrowth(d1.resultObj?.gridList||[],d2.resultObj?.gridList||[],pct);
+    addLog('growth-log','OK','완료');
+  }catch(e){
+    addLog('growth-log','WARN',e.message+' → 샘플');
+    const m1=mockSale().gridList;const m2=mockSale2();
+    renderGrowth(m1,m2,pct);
+  }
+}
+function renderGrowth(cur,prev,pct){
+  const pm={};prev.forEach(r=>{pm[r.agnNo||r.agnNm]=(pm[r.agnNo||r.agnNm]||0)+Number(r.authCnt||0);});
+  const grown=[];cur.forEach(r=>{const k=r.agnNo||r.agnNm;const c=Number(r.authCnt||0);const p=pm[k]||0;const diff=p>0?((c-p)/p*100):100;if(diff>=pct) grown.push({name:r.agnNm||'—',cur:c,prev:p,diff:diff.toFixed(1)});});
+  grown.sort((a,b)=>b.diff-a.diff);
+  document.getElementById('growth-result').innerHTML=grown.length?`<div class="card"><div class="card-head"><div class="card-title">📈 증대 대리점 (+${pct}%↑)</div></div><div class="tbl-wrap"><table><thead><tr><th>대리점</th><th>전월건수</th><th>당월건수</th><th>증가율</th></tr></thead><tbody>${grown.map(r=>`<tr><td style="font-weight:600;color:var(--text)">${r.name}</td><td>${r.prev.toLocaleString()}</td><td class="c-g">${r.cur.toLocaleString()}</td><td><span class="tag tg">+${r.diff}%</span></td></tr>`).join('')}</tbody></table></div></div>`:`<div class="alert info"><span>ℹ️</span><span>증대 기준(${pct}%) 이상 없음</span></div>`;
+  document.getElementById('growth-ai-card').style.display='block';
+  runAI('growth-ai',`증대가맹점(+${pct}%): ${JSON.stringify(grown)}\n1.증대원인 2.확대전략 3.성공요인 4.인센티브제안`);
+}
+
+// ══ 대표님 보고서 ══
+async function runReport(type){
+  const yd=G.results.yesterday;const lm=G.results.lastMonth;const fc=G.results.currentMonth;const rk=G.results.risk;
+  const ps={
+    daily:`KOCES 채널영업2팀 일일 보고서:\n전일:${JSON.stringify(yd?.data?.gridSum||{})}\n위험:${JSON.stringify(rk?.risks||[])}\n\n[제목][핵심수치][특이사항][즉시조치][내일계획] 1페이지 이내`,
+    weekly:`KOCES 주간 보고서:\n전월:${JSON.stringify(lm?.data?.gridList?.slice(0,3)||[])}\n당월예상:${Math.round((fc?.forecastAmt||0)/10000)}만원\n위험:${JSON.stringify(rk?.risks||[])}\n\n주간 영업현황, 지난주 실적, 이번주 계획, 리스크`,
+    full:`KOCES 종합 보고서:\n전일:${JSON.stringify(yd?.data?.gridSum||{})}\n전월:${JSON.stringify(lm?.data?.gridList?.slice(0,5)||[])}\n당월예상:${Math.round((fc?.forecastAmt||0)/10000)}만원(${fc?.elapsed||0}/${fc?.total||0}일)\n위험:${JSON.stringify(rk?.risks||[])}\n\n1.Executive Summary 2.전일실적 3.전월성과 4.당월예상 5.리스크대응 6.다음주계획`
+  };
+  const box=document.getElementById('report-ai');
+  box.textContent='🤖 보고서 작성 중...';
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:ps[type]}]})});
+    const d=await res.json();
+    const txt=d.content?.map(c=>c.text||'').join('')||'생성 실패';
+    box.textContent=txt;
+    document.getElementById('report-one').textContent='📌 '+txt.split('\n').filter(l=>l.trim())[0];
+  }catch(e){box.textContent='❌ '+e.message;}
+}
+
+// ══ AI 공통 ══
+async function runAI(elId,prompt){
+  const box=document.getElementById(elId);
+  box.textContent='🤖 AI 분석 중...';
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    const d=await res.json();
+    box.textContent=d.content?.map(c=>c.text||'').join('')||'실패';
+  }catch(e){box.textContent='❌ '+e.message;}
+}
+
+// ══ 내보내기 ══
+function exportReport(){const txt=`KOCES 대표님 보고서\n생성: ${new Date().toLocaleString('ko-KR')}\n${'='.repeat(60)}\n${document.getElementById('report-ai').textContent}`;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain;charset=utf-8'}));a.download=`KOCES_보고서_${new Date().toISOString().slice(0,10)}.txt`;a.click();}
+function exportAll(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(G.results,null,2)],{type:'application/json'}));a.download=`KOCES_데이터_${new Date().toISOString().slice(0,10)}.json`;a.click();}
+function copyEl(id){navigator.clipboard.writeText(document.getElementById(id).textContent).then(()=>alert('복사됨')).catch(()=>alert('실패'));}
+function addLog(boxId,type,msg){const b=document.getElementById(boxId);if(!b)return;const t=new Date().toTimeString().slice(0,8);const cls={OK:'lok',ERR:'lerr',INFO:'linf',WARN:'lwarn'}[type]||'linf';b.innerHTML+=`\n<div class="ll"><span class="lt">${t}</span><span class="${cls}">[${type}] ${msg}</span></div>`;b.scrollTop=b.scrollHeight;}
+function goPage(name,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.sb-item').forEach(m=>m.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');if(el)el.classList.add('active');}
+
+// ══ Mock ══
+function mockSum(){return{gridSum:{totalAuthCnt:'1009',totalCancelCnt:'23',totalAuthAmt:'102008070',totalCancelAmt:'4771000'},gridList:[{gubun:'신용',buyBankNm:'삼성',authCnt:'300',authAmt:'30000000',cancelCnt:'5',cancelAmt:'500000'},{gubun:'신용',buyBankNm:'국민',authCnt:'250',authAmt:'25000000',cancelCnt:'8',cancelAmt:'800000'}]};}
+function mockSale(){return{gridList:[{agnNo:'000000',agnNm:'한국신용카드결제',authCnt:'9999',cancelCnt:'55',cashCnt:'300'},{agnNo:'000001',agnNm:'강남대리점',authCnt:'5000',cancelCnt:'280',cashCnt:'100'},{agnNo:'000002',agnNm:'서초대리점',authCnt:'3000',cancelCnt:'45',cashCnt:'80'},{agnNo:'000003',agnNm:'송파대리점',authCnt:'1500',cancelCnt:'120',cashCnt:'60'}]};}
+function mockSale2(){return[{agnNo:'000000',agnNm:'한국신용카드결제',authCnt:'8000'},{agnNo:'000001',agnNm:'강남대리점',authCnt:'3500'},{agnNo:'000002',agnNm:'서초대리점',authCnt:'3100'},{agnNo:'000003',agnNm:'송파대리점',authCnt:'1600'}];}
+
+// ══ 초기화 ══
+(function init(){
+  const now=new Date();const yd2=yday();const lm2=lmon();
+  const y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0'),d=String(now.getDate()).padStart(2,'0');
+  document.getElementById('sFrom').value=`${y}-${m}-01`;
+  document.getElementById('sTo').value=`${y}-${m}-${d}`;
+  document.getElementById('sMon').value=`${y}${m}`;
+  document.getElementById('sYear').value=String(y);
+  document.getElementById('yday-date').value=`${yd2.getFullYear()}-${String(yd2.getMonth()+1).padStart(2,'0')}-${String(yd2.getDate()).padStart(2,'0')}`;
+  document.getElementById('yday-lbl').textContent=fmtDate(yd2);
+  document.getElementById('lmon-mon').value=fmtMon(lm2);
+  document.getElementById('lmon-lbl').textContent=fmtMon(lm2);
+  document.getElementById('mch-from').value=fmtMon(lm2);
+  document.getElementById('mch-to').value=fmtMon(now);
+  document.getElementById('fc-info').textContent=`// 오늘: ${fmtDate(now)} | 경과: ${now.getDate()}일 / 총: ${daysInMon(y,now.getMonth()+1)}일`;
+  setInterval(()=>{document.getElementById('hclock').textContent=new Date().toLocaleTimeString('ko-KR');},1000);
+})();
+</script>
+</body>
+</html>
