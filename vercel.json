@@ -1,13 +1,23 @@
 {
   "version": 2,
+  "builds": [
+    {
+      "src": "api/proxy.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
+    }
+  ],
   "routes": [
     {
       "src": "/api/proxy",
-      "dest": "/API/proxy.js"
+      "dest": "/api/proxy.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/인덱스.html"
+      "dest": "/public/$1"
     }
   ]
 }
